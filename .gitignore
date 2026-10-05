@@ -1,0 +1,9 @@
+node_modules/
+build/deployment.*.json
+/proofs/
+__pycache__/
+.pytest_cache/
+.env
+.env.local
+cache/
+artifacts/

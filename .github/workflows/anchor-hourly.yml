@@ -1,0 +1,75 @@
+# Once an hour, ask the Tanilo API to anchor the receipt hashes queued since the last run.
+# The API does the work (builds the tree, sends the transaction); this workflow only makes the call.
+#
+# Off until the repository variable ANCHOR_ENABLED is set to 1.
+#   Secret   CRON_SECRET      the same value the API holds; sent as "Authorization: Bearer ..."
+#   Variable ANCHOR_ENABLED   1 to run
+#   Variable ANCHOR_RUN_URL   optional; default https://api.tanilo.io/internal/anchor/run
+#   Variable ANCHOR_OTS       1 to also timestamp each batch file with OpenTimestamps (optional second anchor)
+#
+# Two things to know about GitHub's scheduler: it runs late under load (minutes, sometimes longer), and it
+# switches scheduled workflows off in a public repository that has had no activity for 60 days.
+name: Anchor batch (hourly)
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anchor-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: vars.ANCHOR_ENABLED == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the API to anchor the queued receipt hashes
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ANCHOR_RUN_URL: ${{ vars.ANCHOR_RUN_URL }}
+        run: |
+          set -eu
+          if [ -z "${CRON_SECRET:-}" ]; then echo "CRON_SECRET is not set"; exit 1; fi
+          url="${ANCHOR_RUN_URL:-https://api.tanilo.io/internal/anchor/run}"
+          code=$(curl -sS -o out.json -w '%{http_code}' --max-time 90 -X POST -H "Authorization: Bearer ${CRON_SECRET}" "$url")
+          echo "HTTP $code"
+          cat out.json; echo
+          # 200: done (possibly nothing to do). 409: another run holds the lock; the next hour takes it.
+          if [ "$code" = "200" ] || [ "$code" = "409" ]; then exit 0; fi
+          # Anything else is a failure worth seeing. The hashes stay queued; nothing is lost.
+          exit 1
+
+  ots:
+    # Optional second anchor: timestamp each published batch file with OpenTimestamps and keep the
+    # .ots files in this repository. Independent of GOAT. Off unless ANCHOR_OTS is 1.
+    if: vars.ANCHOR_ENABLED == '1' && vars.ANCHOR_OTS == '1'
+    needs: run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet opentimestamps-client==0.7.2
+      - name: Stamp new batch files and upgrade pending timestamps
+        env:
+          ANCHOR_API: ${{ vars.ANCHOR_API }}
+        run: python3 ots/stamp_batches.py
+      - name: Commit new or upgraded timestamps
+        run: |
+          set -eu
+          if [ -z "$(git status --porcelain ots/batches)" ]; then echo "nothing new"; exit 0; fi
+          git config user.name "tanilo-anchor workflow"
+          git config user.email "joe@tanilo.io"
+          git add ots/batches
+          git commit -m "OpenTimestamps: batch files stamped or upgraded"
+          git push

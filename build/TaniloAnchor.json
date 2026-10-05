@@ -1,0 +1,183 @@
+{
+  "contractName": "TaniloAnchor",
+  "compiler": "0.8.37+commit.f401782d.Emscripten.clang",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "initialPublisher",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "root",
+          "type": "bytes32"
+        }
+      ],
+      "name": "AlreadyAnchored",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotPublisher",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroRoot",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "root",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "batchId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "publisher",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "leafCount",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "blockTime",
+          "type": "uint64"
+        }
+      ],
+      "name": "Anchored",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previous",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "current",
+          "type": "address"
+        }
+      ],
+      "name": "PublisherChanged",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "root",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "leafCount",
+          "type": "uint64"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "batchId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "anchor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "anchoredAt",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "anchoredBlock",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "publisher",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "next",
+          "type": "address"
+        }
+      ],
+      "name": "setPublisher",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b5060405161048c38038061048c833981016040819052602c91607a565b600280546001600160a01b0319166001600160a01b0383169081179091556040516000907f5049ad685dd352f26a7b9e0413f1a72662662c8fe4082332182ca0f81a1e7c4f908290a35060a8565b600060208284031215608b57600080fd5b81516001600160a01b038116811460a157600080fd5b9392505050565b6103d5806100b76000396000f3fe608060405234801561001057600080fd5b50600436106100675760003560e01c80638c72c54e116100505780638c72c54e146100c95780639591a610146100f4578063cab636611461011e57600080fd5b806365cbe8791461006c57806370c127c6146100b4575b600080fd5b61009661007a366004610311565b60016020526000908152604090205467ffffffffffffffff1681565b60405167ffffffffffffffff90911681526020015b60405180910390f35b6100c76100c236600461032a565b610131565b005b6002546100dc906001600160a01b031681565b6040516001600160a01b0390911681526020016100ab565b610096610102366004610311565b60006020819052908152604090205467ffffffffffffffff1681565b6100c761012c36600461036f565b610272565b6002546001600160a01b0316331461015c57604051633664441d60e11b815260040160405180910390fd5b82610193576040517fb263ae7300000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b60008381526020819052604090205467ffffffffffffffff16156101ea576040517f30d238130000000000000000000000000000000000000000000000000000000081526004810184905260240160405180910390fd5b600083815260208181526040808320805467ffffffffffffffff199081164267ffffffffffffffff9081169182179093556001855294839020805490911643831617905581519086168152918201929092523391839186917f39147cd1a04b630c724c872ba4dcff0119c163b6e890fc38fd1eb9073a2b9952910160405180910390a4505050565b6002546001600160a01b0316331461029d57604051633664441d60e11b815260040160405180910390fd5b6002546040516001600160a01b038084169216907f5049ad685dd352f26a7b9e0413f1a72662662c8fe4082332182ca0f81a1e7c4f90600090a3600280547fffffffffffffffffffffffff0000000000000000000000000000000000000000166001600160a01b0392909216919091179055565b60006020828403121561032357600080fd5b5035919050565b60008060006060848603121561033f57600080fd5b83359250602084013567ffffffffffffffff8116811461035e57600080fd5b929592945050506040919091013590565b60006020828403121561038157600080fd5b81356001600160a01b038116811461039857600080fd5b939250505056fea2646970667358221220ba08133d70344034edc6472874c8834c32181e417a8be9825ccb64978071960f64736f6c63430008250033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100675760003560e01c80638c72c54e116100505780638c72c54e146100c95780639591a610146100f4578063cab636611461011e57600080fd5b806365cbe8791461006c57806370c127c6146100b4575b600080fd5b61009661007a366004610311565b60016020526000908152604090205467ffffffffffffffff1681565b60405167ffffffffffffffff90911681526020015b60405180910390f35b6100c76100c236600461032a565b610131565b005b6002546100dc906001600160a01b031681565b6040516001600160a01b0390911681526020016100ab565b610096610102366004610311565b60006020819052908152604090205467ffffffffffffffff1681565b6100c761012c36600461036f565b610272565b6002546001600160a01b0316331461015c57604051633664441d60e11b815260040160405180910390fd5b82610193576040517fb263ae7300000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b60008381526020819052604090205467ffffffffffffffff16156101ea576040517f30d238130000000000000000000000000000000000000000000000000000000081526004810184905260240160405180910390fd5b600083815260208181526040808320805467ffffffffffffffff199081164267ffffffffffffffff9081169182179093556001855294839020805490911643831617905581519086168152918201929092523391839186917f39147cd1a04b630c724c872ba4dcff0119c163b6e890fc38fd1eb9073a2b9952910160405180910390a4505050565b6002546001600160a01b0316331461029d57604051633664441d60e11b815260040160405180910390fd5b6002546040516001600160a01b038084169216907f5049ad685dd352f26a7b9e0413f1a72662662c8fe4082332182ca0f81a1e7c4f90600090a3600280547fffffffffffffffffffffffff0000000000000000000000000000000000000000166001600160a01b0392909216919091179055565b60006020828403121561032357600080fd5b5035919050565b60008060006060848603121561033f57600080fd5b83359250602084013567ffffffffffffffff8116811461035e57600080fd5b929592945050506040919091013590565b60006020828403121561038157600080fd5b81356001600160a01b038116811461039857600080fd5b939250505056fea2646970667358221220ba08133d70344034edc6472874c8834c32181e417a8be9825ccb64978071960f64736f6c63430008250033"
+}

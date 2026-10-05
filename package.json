@@ -1,0 +1,23 @@
+{
+  "name": "tanilo-anchor",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Batch-anchor Tanilo receipt hashes: an RFC 6962 Merkle tree per batch, with the root published on GOAT Network (EVM).",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "node:local": "hardhat node --port 8545",
+    "deploy": "node scripts/deploy.mjs",
+    "anchor": "node scripts/anchor-batch.mjs",
+    "verify": "node scripts/verify-proof.mjs",
+    "new-wallet": "node scripts/new-wallet.mjs"
+  },
+  "dependencies": {
+    "ethers": "^6.17.0"
+  },
+  "devDependencies": {
+    "hardhat": "^3.18.1"
+  }
+}
