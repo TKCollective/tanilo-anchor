@@ -14,7 +14,7 @@ Nothing here has been done. This is a plan for later, written for someone who is
 
 | | Value | Source |
 |---|---|---|
-| Gas per `anchor()` | 71,804 measured locally; 72,672 estimated on testnet3 | this repository's tests; `eth_estimateGas` on 2026-10-05 |
+| Gas per `anchor()` | 71,804 used by the one testnet3 batch so far (the same figure as on a local chain); 72,672 estimated | transaction `0xdd2316…0492` on testnet3; `eth_estimateGas` on 2026-10-05 |
 | Mainnet gas price | 130,007 wei | `eth_gasPrice` on `rpc.goat.network`, 2026-10-05 |
 | Minimum priority fee | 130,000 wei | GOAT docs, fees page |
 | Minimum base fee | 7 wei | GOAT docs, fees page |

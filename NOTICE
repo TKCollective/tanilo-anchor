@@ -11,5 +11,5 @@ vectors/merkle-proofs.json is dedicated to the public domain under CC0 1.0
 Universal (see LICENSE-vectors-CC0-1.0.txt).
 
 contracts/TaniloAnchor.sol carries the identifier "SPDX-License-Identifier: MIT".
-It is kept byte-for-byte as it was compiled for the contract deployed on GOAT
+It is kept byte-for-byte as it was compiled for the contracts deployed on GOAT
 testnet3, so that build/TaniloAnchor.json can be compared with the deployed code.

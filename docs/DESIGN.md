@@ -22,7 +22,7 @@ Measured on a local EVM (Hardhat), not on GOAT:
 | `anchor(root, leafCount, batchId)` | 71,792 to 71,804 |
 | Calldata-only transaction, 48-byte payload | 22,710 to 22,740 |
 
-A gas estimate for `anchor()` against the deployed testnet3 contract on 2026-10-05 was 72,672. The contract path costs about three times the calldata path per batch and is the one used, for the reasons in the table above.
+On GOAT testnet3 on 2026-10-05: deploying the contract used 290,923 gas, the one batch anchored through the first contract used 71,804, and a gas estimate for `anchor()` was 72,672. The contract path costs about three times the calldata path per batch and is the one used, for the reasons in the table above.
 
 ## What the service does (in the Tanilo API)
 

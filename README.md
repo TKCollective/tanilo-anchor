@@ -37,7 +37,7 @@ Only hashes are involved. A leaf is a receipt's `canonical_sha256`; the chain se
   "batched_at": "<when the batch was built, by the issuer's clock; not evidence>",
   "anchors": [
     { "kind": "evm-contract", "chain": "eip155:48816", "chain_id": 48816,
-      "contract": "0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b",
+      "contract": "0x821b832D25d8E18BD3A761B935bfaf1c2F761D58",
       "publisher": "0x…", "tx_hash": "0x…", "block_number": 0, "block_hash": "0x…",
       "block_time": "<the evidential time>", "gas_used": "…", "effective_gas_price_wei": "…",
       "fee_native": "…", "explorer_tx": "https://explorer.testnet3.goat.network/tx/0x…" }
@@ -60,7 +60,7 @@ node scripts/verify-proof.mjs receipt.json receipt.anchor.json --offline
 **On-chain: was this root published, and when?** Ask the contract you trust.
 
 ```
-TANILO_ANCHOR_CONTRACT=0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b \
+TANILO_ANCHOR_CONTRACT=0x821b832D25d8E18BD3A761B935bfaf1c2F761D58 \
   node scripts/verify-proof.mjs receipt.json receipt.anchor.json
 ```
 
@@ -72,7 +72,7 @@ In Python, with the standard library only (`python/tanilo_anchor_verify.py`; the
 from tanilo_anchor_verify import verify_anchor, evm_contract_lookup
 
 lookup = evm_contract_lookup("https://rpc.testnet3.goat.network",
-                             trusted_contracts=["0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b"],
+                             trusted_contracts=["0x821b832D25d8E18BD3A761B935bfaf1c2F761D58"],
                              chain_id=48816)
 a = verify_anchor(canonical_sha256, proof, {"evm-contract": lookup})
 print(a.status, a.anchored_at)
@@ -92,12 +92,15 @@ Anchor status sits beside signature validity and is never folded into it. An anc
 
 `contracts/TaniloAnchor.sol`, 49 lines. `build/TaniloAnchor.json` is the committed build (solc 0.8.37, optimizer on, 981 bytes of runtime code).
 
-| Network | Chain | Address |
-|---|---|---|
-| GOAT testnet3 | `eip155:48816` | `0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b` |
-| GOAT mainnet | `eip155:2345` | not deployed |
+| Network | Chain | Address | Status |
+|---|---|---|---|
+| GOAT testnet3 | `eip155:48816` | `0x821b832D25d8E18BD3A761B935bfaf1c2F761D58` | current; publisher `0x01Ef4C7dc17af4b8BF7758aC90B6Ae0036a8ffd8` |
+| GOAT testnet3 | `eip155:48816` | `0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b` | retired; one batch, kept as a historical example |
+| GOAT mainnet | `eip155:2345` | not deployed | |
 
-The code at the testnet3 address is byte-identical to `deployedBytecode` in `build/TaniloAnchor.json`. You can compare them yourself with `eth_getCode`.
+The code at both testnet3 addresses is byte-identical to `deployedBytecode` in `build/TaniloAnchor.json`, and that build is reproducible from the source with solc 0.8.37. You can compare them yourself with `eth_getCode`.
+
+The retired contract anchored one batch, on 2026-10-05. Its publisher key was not kept, so no new root can be anchored through it. That batch and its three proofs remain valid and verifiable; they are in `examples/historical/testnet3-2026-10-05/`, unchanged, with a note on how they differ from what the code writes today. To check a proof from that batch on-chain, name the retired contract as the one you trust.
 
 Mainnet is disabled in `config/chains.json`, and the code refuses chain 2345 unless `ALLOW_MAINNET=1` is set.
 
@@ -115,6 +118,8 @@ python/tanilo_anchor_verify.py  the Python checker (standard library only)
 vectors/merkle-proofs.json      78 valid and 15 invalid inclusion vectors (CC0-1.0)
 ots/                            optional: OpenTimestamps over each published batch file
 .github/workflows/              the hourly call that asks the API to anchor what is queued
+examples/receipts/              three published receipts used by the examples
+examples/historical/            the first testnet3 batch and its proofs, kept as written
 docs/                           design notes; how to fund a mainnet wallet
 ```
 
@@ -124,7 +129,7 @@ The service side (the queue that collects receipt hashes after signing, the batc
 
 ```
 npm ci
-npm test                         # 13 tests; the end-to-end ones start their own local chain
+npm test                         # 14 tests; the end-to-end ones start their own local chain
 python3 python/test_vectors.py   # the Python checker against the Node-made vectors
 python3 ots/test_stamp_batches.py
 ```
@@ -137,7 +142,7 @@ The end-to-end tests deploy the contract to a local Hardhat chain, anchor a batc
 
 Off by default. When switched on, the workflow timestamps each published batch file with OpenTimestamps and keeps the `.ots` file in `ots/batches/`. That commits the batch file to Bitcoin through the public calendars, independently of GOAT. It uses the maintained Python client (`opentimestamps-client`) in the scheduled job. An earlier prototype used the `opentimestamps` npm package; it was removed because of unpatched vulnerabilities in its dependencies.
 
-This path has been tested with a stand-in for the `ots` command only. It has not been run against the public calendars.
+This path has been tested with a stand-in for the `ots` command only. It has not been run against the public calendars. (The earlier prototype did submit one root to the calendars, for the historical batch; that entry is still `pending` in those proofs and has not been upgraded.)
 
 ## Keys
 
