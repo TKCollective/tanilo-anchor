@@ -12,7 +12,7 @@ These four files are kept exactly as they were written on 2026-10-05. They are a
 | Root | `bc014ab6e6295dbf4eaa685e23df922cb555ecc830aff3b846e35672bd3f9599` |
 | Leaves | the three receipts in `examples/receipts/`, in file-name order |
 
-**Retired, still verifiable.** No new root is anchored through this contract: its publisher key was not kept, and only the publisher can anchor. Nothing about the batch above changes. The contract still answers `anchoredAt(root)` with the block time, and the three proofs here still recompute to the root. To check them on-chain, name this contract as the one you trust:
+**Retired on 2026-10-05; no new roots will be anchored through it. Its anchored batch remains verifiable.** The contract still answers `anchoredAt(root)` with the block time, and the three proofs here still recompute to the root. To check them on-chain, name this contract as the one you trust:
 
 ```
 TANILO_ANCHOR_CONTRACT=0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b \

@@ -100,7 +100,7 @@ Anchor status sits beside signature validity and is never folded into it. An anc
 
 The code at both testnet3 addresses is byte-identical to `deployedBytecode` in `build/TaniloAnchor.json`, and that build is reproducible from the source with solc 0.8.37. You can compare them yourself with `eth_getCode`.
 
-The retired contract anchored one batch, on 2026-10-05. Its publisher key was not kept, so no new root can be anchored through it. That batch and its three proofs remain valid and verifiable; they are in `examples/historical/testnet3-2026-10-05/`, unchanged, with a note on how they differ from what the code writes today. To check a proof from that batch on-chain, name the retired contract as the one you trust.
+About the first contract: Retired on 2026-10-05; no new roots will be anchored through it. Its anchored batch remains verifiable. The batch and its three proofs are in `examples/historical/testnet3-2026-10-05/`, unchanged, with a note on how they differ from what the code writes today. To check a proof from that batch on-chain, name the retired contract as the one you trust.
 
 Mainnet is disabled in `config/chains.json`, and the code refuses chain 2345 unless `ALLOW_MAINNET=1` is set.
 
