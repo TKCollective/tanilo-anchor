@@ -4,7 +4,7 @@ Proof of when for Tanilo receipts.
 
 A Tanilo receipt is signed, and the signature shows which key signed it. A signature does not show *when*: the time inside a receipt is the issuer's own statement. Anchoring adds one thing. The hashes of a batch of receipts are combined into a Merkle tree, and the tree's 32-byte root is published in a transaction on GOAT Network. Each receipt then has a short inclusion proof. Anyone holding the receipt and its proof can show that the receipt's canonical bytes existed no later than the time of that block.
 
-**Status: testnet.** The contract is deployed on GOAT **testnet3** only. Nothing is anchored on mainnet, and the Tanilo API does not anchor live receipts yet. Testnets can be reset, so a testnet proof is a demonstration, not a lasting record.
+**Status: testnet trial.** The contract is deployed on GOAT **testnet3** only. Nothing is anchored on mainnet. Anchoring of Tanilo receipts is in a testnet trial and is not a supported feature yet. Testnets can be reset, so a testnet proof is a demonstration, not a lasting record.
 
 ## What an anchor shows, and what it does not
 
@@ -113,7 +113,7 @@ src/merkle.mjs                  RFC 6962 tree, audit paths, path verification
 src/proof.mjs                   the tanilo.anchor.v1 record and its offline check
 src/anchors/evm.mjs             publish and verify on an EVM chain (contract or calldata mode)
 src/batcher.mjs                 batch by count or by time
-scripts/                        deploy, anchor a folder of receipts, verify a proof, make a wallet, make vectors
+scripts/                        deploy, anchor a folder of receipts, verify a proof, make a wallet, make vectors, health check
 python/tanilo_anchor_verify.py  the Python checker (standard library only)
 vectors/merkle-proofs.json      78 valid and 15 invalid inclusion vectors (CC0-1.0)
 ots/                            optional: OpenTimestamps over each published batch file
@@ -123,7 +123,7 @@ examples/historical/            the first testnet3 batch and its proofs, kept as
 docs/                           design notes; how to fund a mainnet wallet
 ```
 
-The service side (the queue that collects receipt hashes after signing, the batch route, and the public lookups `GET /v1/anchor/proof/{canonical_sha256}` and `GET /v1/anchor/batches`) lives in the Tanilo API, which is not open source. `src/merkle.mjs` and `src/proof.mjs` are the exact files the API uses to build trees and proofs.
+The service side (the queue that collects receipt hashes after signing, the batch route, and the lookups `GET /v1/anchor/proof/{canonical_sha256}`, `GET /v1/anchor/batches` and `GET /v1/anchor/status`) lives in the Tanilo API, which is not open source. `src/merkle.mjs` and `src/proof.mjs` are the exact files the API uses to build trees and proofs.
 
 ## Tests
 

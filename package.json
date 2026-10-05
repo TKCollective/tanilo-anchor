@@ -12,7 +12,8 @@
     "deploy": "node scripts/deploy.mjs",
     "anchor": "node scripts/anchor-batch.mjs",
     "verify": "node scripts/verify-proof.mjs",
-    "new-wallet": "node scripts/new-wallet.mjs"
+    "new-wallet": "node scripts/new-wallet.mjs",
+    "health": "node scripts/health.mjs"
   },
   "dependencies": {
     "ethers": "^6.17.0"
