@@ -28,7 +28,7 @@ On GOAT testnet3 on 2026-10-05: deploying the contract used 290,923 gas, the one
 
 1. After a receipt is signed, its `canonical_sha256` and the time go on a queue. Nothing else about the receipt is queued. A cached reply that replays an earlier receipt queues nothing.
 2. A scheduled call drains the queue: up to 1,000 hashes per batch, leaving out any hash that already has a proof.
-3. The root is anchored with one transaction, and the batch document and a pointer per hash are stored.
+3. The root is anchored with one transaction (the leaf count sent to the contract is 0), and the batch document and a pointer per hash are stored, under a prefix for that network.
 4. Only then is the queue trimmed. A failure before that leaves the hashes queued for the next run. If the root reached the chain but storing failed, the next run finds the root already anchored and rebuilds the same record from the chain instead of sending again.
 5. A proof is computed on request from the batch document and checked before it is returned.
 
@@ -40,8 +40,9 @@ On GOAT testnet3 on 2026-10-05: deploying the contract used 290,923 gas, the one
 - **Tree size.** The audit path, not the stated `tree_size`, is what the root commits to. A wrong `tree_size` that changes the path's shape fails; one that keeps the same shape recomputes the same root.
 - **Finality.** GOAT documents fast sequencer confirmation and later publication to Bitcoin. A block time is the chain's statement of when the block was made.
 - **Testnets reset.** A proof that points at a reset chain can no longer be confirmed.
-- **Scheduler.** GitHub's scheduled workflows run late under load and are switched off in a public repository after 60 days without activity.
-- **Proof custody.** Roots alone are not enough to rebuild proofs; the published batch files are. With the optional OpenTimestamps step, the batch files are also kept in this repository.
+- **Scheduler.** GitHub's scheduled workflows are best effort: in this repository's first day, 2 of about 19 hourly runs started. They are also switched off in a public repository after 60 days without activity. The hourly call should come from a scheduler that keeps time; the workflow is a backstop.
+- **Proof custody.** Roots alone are not enough to rebuild proofs; the batch files are. A batch file is given to anyone who holds a receipt in that batch, so a holder can keep it. Batch files are not published to everyone, because that would show how many receipts each batch holds.
+- **Batch size and proof holders.** A proof carries `tree_size`, so a receipt's holder learns the size of that receipt's batch. Hiding that as well would need padding every batch to a fixed size with random leaves. Not done.
 
 ## Open question
 

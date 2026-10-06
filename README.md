@@ -16,13 +16,15 @@ A Tanilo receipt is signed, and the signature shows which key signed it. A signa
 
 Only hashes are involved. A leaf is a receipt's `canonical_sha256`; the chain sees one 32-byte root per batch. No receipt content goes into a batch, a proof or a transaction.
 
+How many receipts a batch holds is not published: see [What is public](#what-is-public).
+
 ## How it works
 
 1. **Leaf.** A receipt's `canonical_sha256`: the SHA-256 of the RFC 8785 canonical bytes of its signed payload. It is the same value `tanilo-receipt-verify` recomputes.
 2. **Tree.** RFC 6962 (Certificate Transparency) Merkle tree over SHA-256. A leaf hash is `SHA256(0x00 || digest)` and a node hash is `SHA256(0x01 || left || right)`. Leaves are in queue order; a hash appears once.
 3. **Root on-chain.** `TaniloAnchor.anchor(root, leafCount, batchId)`. The contract stores the block time at which a root was first anchored, accepts roots only from one publisher address, and refuses a root that is already anchored, so a root's first time cannot be overwritten.
 4. **Proof.** One `tanilo.anchor.v1` record per receipt: the leaf, its index, the tree size, the audit path, the root, and where the root was published.
-5. **Batch file.** Each batch's ordered list of hashes is published, so proofs can be rebuilt by anyone and do not depend on Tanilo keeping them.
+5. **Batch file.** Each batch's ordered list of hashes is kept, and is given to anyone who holds a receipt in that batch, so that holder can rebuild the batch's proofs without depending on Tanilo keeping them.
 
 ```json
 {
@@ -46,6 +48,18 @@ Only hashes are involved. A leaf is a receipt's `canonical_sha256`; the chain se
 ```
 
 `block_time` is the time that counts. `batched_at` is informational.
+
+## What is public
+
+| Public | Not public |
+|---|---|
+| For each batch: its id, root, transaction and block time (`GET /v1/anchor/batches`). | How many receipts a batch holds. The index and the status route carry no counts. |
+| A receipt's proof, to anyone who has its `canonical_sha256` (`GET /v1/anchor/proof/{canonical_sha256}`). | The number passed to the contract as `leafCount`: the service sends 0, so the public event does not carry the batch size. |
+| | A batch's list of hashes, except to someone who names a hash that is in it (`GET /v1/anchor/batches/{batch_id}?leaf={canonical_sha256}`). |
+
+One thing cannot be hidden from a receipt's own holder: a proof carries `tree_size`, because an RFC 6962 path cannot be checked without it. So the holder of a receipt learns the size of that receipt's batch. The pattern of hours in which a batch exists at all is also visible to everyone.
+
+Batches anchored on testnet before 2026-10-06 predate this: their sizes were public, and their on-chain events carry the real count.
 
 ## Checking a proof
 
@@ -113,23 +127,23 @@ src/merkle.mjs                  RFC 6962 tree, audit paths, path verification
 src/proof.mjs                   the tanilo.anchor.v1 record and its offline check
 src/anchors/evm.mjs             publish and verify on an EVM chain (contract or calldata mode)
 src/batcher.mjs                 batch by count or by time
-scripts/                        deploy, anchor a folder of receipts, verify a proof, make a wallet, make vectors, health check
+scripts/                        guarded deploy, anchor a folder of receipts, verify a proof, make a wallet, make vectors, health check
 python/tanilo_anchor_verify.py  the Python checker (standard library only)
 vectors/merkle-proofs.json      78 valid and 15 invalid inclusion vectors (CC0-1.0)
-ots/                            optional: OpenTimestamps over each published batch file
-.github/workflows/              the hourly call that asks the API to anchor what is queued
+ots/                            not in use: an OpenTimestamps step that needs public batch files
+.github/workflows/              a backstop call that asks the API to anchor what is queued
 examples/receipts/              three published receipts used by the examples
 examples/historical/            the first testnet3 batch and its proofs, kept as written
-docs/                           design notes; how to fund a mainnet wallet
+docs/                           design notes; how to fund a mainnet wallet; the mainnet launch runbook
 ```
 
-The service side (the queue that collects receipt hashes after signing, the batch route, and the lookups `GET /v1/anchor/proof/{canonical_sha256}`, `GET /v1/anchor/batches` and `GET /v1/anchor/status`) lives in the Tanilo API, which is not open source. `src/merkle.mjs` and `src/proof.mjs` are the exact files the API uses to build trees and proofs.
+The service side (the queue that collects receipt hashes after signing, the batch route, and the lookups under `/v1/anchor`) lives in the Tanilo API, which is not open source. `src/merkle.mjs` and `src/proof.mjs` are the exact files the API uses to build trees and proofs.
 
 ## Tests
 
 ```
 npm ci
-npm test                         # 14 tests; the end-to-end ones start their own local chain
+npm test                         # 19 tests; the end-to-end ones start their own local chain
 python3 python/test_vectors.py   # the Python checker against the Node-made vectors
 python3 ots/test_stamp_batches.py
 ```
@@ -138,11 +152,11 @@ The end-to-end tests deploy the contract to a local Hardhat chain, anchor a batc
 
 `npm audit` reports no known vulnerabilities for this dependency set (`ethers`, and `hardhat` 3 for tests only) as of 2026-10-05.
 
-## OpenTimestamps (optional second anchor)
+## OpenTimestamps (not in use)
 
-Off by default. When switched on, the workflow timestamps each published batch file with OpenTimestamps and keeps the `.ots` file in `ots/batches/`. That commits the batch file to Bitcoin through the public calendars, independently of GOAT. It uses the maintained Python client (`opentimestamps-client`) in the scheduled job. An earlier prototype used the `opentimestamps` npm package; it was removed because of unpatched vulnerabilities in its dependencies.
+`ots/stamp_batches.py` timestamps each published batch file with OpenTimestamps, as a second anchor that does not depend on GOAT. It needs the batch files to be public. They no longer are, because a public list of hashes shows how many receipts a batch holds. The script is kept for a later version that stamps the root only; the workflow no longer calls it.
 
-This path has been tested with a stand-in for the `ots` command only. It has not been run against the public calendars. (The earlier prototype did submit one root to the calendars, for the historical batch; that entry is still `pending` in those proofs and has not been upgraded.)
+It was tested with a stand-in for the `ots` command only and has not been run against the public calendars. (The earlier prototype did submit one root to the calendars, for the historical batch; that entry is still `pending` in those proofs and has not been upgraded.) That prototype used the `opentimestamps` npm package, which was removed because of unpatched vulnerabilities in its dependencies.
 
 ## Keys
 

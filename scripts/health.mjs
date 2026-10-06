@@ -1,6 +1,7 @@
 // One-command health check of anchoring on the live API. Read-only.
-//   node scripts/health.mjs            public figures: batches, queue, last run, last batch
-//   node scripts/health.mjs --full     also the text of the last error (asks for CRON_SECRET, input hidden)
+//   node scripts/health.mjs            what is public: number of batches, last batch, last run, time of the last error
+//   node scripts/health.mjs --full     also queue depth, batch sizes and the last error's text
+//                                      (asks for CRON_SECRET, input hidden). Counts are not public.
 //   ANCHOR_API=https://api.tanilo.io   override the API base
 // Exit code 0 when healthy, 1 when something needs a look.
 const API = (process.env.ANCHOR_API || 'https://api.tanilo.io').replace(/\/+$/, '');
@@ -38,27 +39,30 @@ if (full) headers.authorization = 'Bearer ' + (process.env.CRON_SECRET || await 
 const st = await get('/v1/anchor/status', headers);
 if (st.status !== 200 || !st.json) { console.log(`PROBLEM  ${API}/v1/anchor/status answered ${st.status}`); process.exit(1); }
 const s = st.json;
+const op = s.operator || null;   // present only when the secret was accepted
 const problems = [];
 const HOUR = 3600000;
-const queuedFor = s.oldest_queued_at ? Date.now() - Date.parse(s.oldest_queued_at) : 0;
-const runAge = s.last_run ? Date.now() - Date.parse(s.last_run.at) : Infinity;
+const lastRun = op ? op.last_run : s.last_run;
+const runAge = lastRun ? Date.now() - Date.parse(lastRun.at) : Infinity;
+const queuedFor = op && op.oldest_queued_at ? Date.now() - Date.parse(op.oldest_queued_at) : 0;
 if (!s.queueing_new_receipts) problems.push('queueing is switched off (ANCHOR_QUEUE is not 1)');
 if (!s.contract) problems.push('no contract address is configured');
-if (s.last_run && s.last_run.status !== 'ok') problems.push(`the last run ${ago(s.last_run.at)} ended "${s.last_run.status}"`);
-if (runAge > 2.5 * HOUR) problems.push(s.last_run ? `no run for ${ago(s.last_run.at).replace(' ago', '')} (expected about hourly)` : 'no run has been recorded yet');
-if (queuedFor > 2.5 * HOUR) problems.push(`the oldest queued hash has waited since ${s.oldest_queued_at}`);
+if (lastRun && lastRun.status !== 'ok') problems.push(`the last run ${ago(lastRun.at)} ended "${lastRun.status}"`);
+if (runAge > 2.5 * HOUR) problems.push(lastRun ? `no run for ${ago(lastRun.at).replace(' ago', '')} (expected about hourly)` : 'no run has been recorded yet');
+if (queuedFor > 2.5 * HOUR) problems.push(`the oldest queued hash has waited since ${op.oldest_queued_at}`);
 
 console.log(`Anchoring health   ${API}   checked ${s.checked_at}`);
 console.log(`  network / contract   ${s.chain}   ${s.contract}`);
 console.log(`  queueing receipts    ${s.queueing_new_receipts ? 'on' : 'OFF'}`);
 console.log(`  batches anchored     ${s.batches_total}`);
-console.log(`  queue depth          ${s.queue_depth}${s.oldest_queued_at ? `   (oldest queued ${ago(s.oldest_queued_at)})` : ''}`);
-console.log(`  last run             ${s.last_run ? `${s.last_run.status}, ${ago(s.last_run.at)}: ${s.last_run.batches} batch(es), ${s.last_run.hashes_anchored} hash(es)` : 'none recorded'}`);
+console.log(`  last run             ${lastRun ? `${lastRun.status}, ${ago(lastRun.at)}${op ? `: ${lastRun.batches} batch(es), ${lastRun.hashes_anchored} hash(es)` : ''}` : 'none recorded'}`);
 if (s.last_batch) {
-  console.log(`  last batch           ${s.last_batch.batch_id}   ${s.last_batch.tree_size} hash(es)   block time ${s.last_batch.block_time} (${ago(s.last_batch.block_time)})`);
+  console.log(`  last batch           ${s.last_batch.batch_id}   block time ${s.last_batch.block_time} (${ago(s.last_batch.block_time)})${op && op.last_batch_size != null ? `   ${op.last_batch_size} hash(es)` : ''}`);
   console.log(`                       ${s.last_batch.explorer_tx || s.last_batch.tx_hash}`);
 } else console.log('  last batch           none yet');
-console.log(`  last error           ${s.last_error_at ? `at ${s.last_error_at} (${ago(s.last_error_at)})${'last_error' in s ? `: ${s.last_error}` : '   (run with --full to see the text)'}` : 'none recorded'}`);
-if (full && !('last_error' in s)) console.log('  note                 the secret was not accepted, so the error text is not shown');
+if (op) console.log(`  queue depth          ${op.queue_depth}${op.oldest_queued_at ? `   (oldest queued ${ago(op.oldest_queued_at)})` : ''}`);
+else console.log('  queue depth          not public; run with --full');
+console.log(`  last error           ${s.last_error_at ? `at ${s.last_error_at} (${ago(s.last_error_at)})${op ? `: ${op.last_error}` : '   (run with --full to see the text)'}` : 'none recorded'}`);
+if (full && !op) console.log('  note                 the secret was not accepted, so counts and the error text are not shown');
 console.log(problems.length ? `\nNEEDS A LOOK\n${problems.map((p) => '  - ' + p).join('\n')}` : '\nHEALTHY');
 process.exit(problems.length ? 1 : 0);

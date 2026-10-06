@@ -5,10 +5,11 @@
 #   Secret   CRON_SECRET      the same value the API holds; sent as "Authorization: Bearer ..."
 #   Variable ANCHOR_ENABLED   1 to run
 #   Variable ANCHOR_RUN_URL   optional; default https://api.tanilo.io/internal/anchor/run
-#   Variable ANCHOR_OTS       1 to also timestamp each batch file with OpenTimestamps (optional second anchor)
 #
-# Two things to know about GitHub's scheduler: it runs late under load (minutes, sometimes longer), and it
-# switches scheduled workflows off in a public repository that has had no activity for 60 days.
+# GitHub's scheduler is best effort. In this repository's first day it started 2 of about 19 hourly runs
+# (2026-10-05). It also switches scheduled workflows off in a public repository that has had no activity for
+# 60 days. So this workflow is a backstop and a manual trigger ("Run workflow"), not a dependable hourly clock.
+# A scheduler that keeps time (see docs/mainnet-launch.md) should make the hourly call.
 name: Anchor batch (hourly)
 
 on:
@@ -39,37 +40,21 @@ jobs:
           url="${ANCHOR_RUN_URL:-https://api.tanilo.io/internal/anchor/run}"
           code=$(curl -sS -o out.json -w '%{http_code}' --max-time 90 -X POST -H "Authorization: Bearer ${CRON_SECRET}" "$url")
           echo "HTTP $code"
-          cat out.json; echo
-          # 200: done (possibly nothing to do). 409: another run holds the lock; the next hour takes it.
+          # This log is public. Print the outcome and the batch ids only: no counts, and not the raw answer.
+          python3 - <<'PY'
+          import json
+          try:
+              d = json.load(open("out.json"))
+          except Exception:
+              print("answer: not JSON"); raise SystemExit(0)
+          print("status:", d.get("status"))
+          for b in d.get("batches") or []:
+              print("batch:", b.get("batch_id"), "tx:", b.get("tx_hash"), "block time:", b.get("block_time"), "recovered:", b.get("recovered"))
+          if d.get("status") not in ("ok", "busy"):
+              print("the run did not complete; the error text is available to the operator through the status route")
+          PY
+          rm -f out.json
+          # 200: done (possibly nothing to do). 409: another run holds the lock; the next run takes it.
           if [ "$code" = "200" ] || [ "$code" = "409" ]; then exit 0; fi
           # Anything else is a failure worth seeing. The hashes stay queued; nothing is lost.
           exit 1
-
-  ots:
-    # Optional second anchor: timestamp each published batch file with OpenTimestamps and keep the
-    # .ots files in this repository. Independent of GOAT. Off unless ANCHOR_OTS is 1.
-    if: vars.ANCHOR_ENABLED == '1' && vars.ANCHOR_OTS == '1'
-    needs: run
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install --quiet opentimestamps-client==0.7.2
-      - name: Stamp new batch files and upgrade pending timestamps
-        env:
-          ANCHOR_API: ${{ vars.ANCHOR_API }}
-        run: python3 ots/stamp_batches.py
-      - name: Commit new or upgraded timestamps
-        run: |
-          set -eu
-          if [ -z "$(git status --porcelain ots/batches)" ]; then echo "nothing new"; exit 0; fi
-          git config user.name "tanilo-anchor workflow"
-          git config user.email "joe@tanilo.io"
-          git add ots/batches
-          git commit -m "OpenTimestamps: batch files stamped or upgraded"
-          git push
