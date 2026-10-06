@@ -16,7 +16,7 @@ Network facts, checked against GOAT's documentation (docs.goat.network, "Network
 
 - [ ] The mainnet wallet exists, its key is in the password manager as "GOAT MAINNET anchor key", and it is funded (see `mainnet-funding.md`).
 - [ ] The API change that keeps batch sizes private and stores each network's batches separately is merged and deployed (API branch `anchor-mainnet-prep`).
-- [ ] A scheduler that keeps time is chosen (see "The hourly call" below).
+- [ ] The hourly QStash schedule exists (see "The hourly call" below).
 
 ## 1. Deploy the contract (one real transaction, about 0.00000004 BTC)
 
@@ -81,10 +81,11 @@ It should show `eip155:2345` and the mainnet contract. After the next run: one b
 
 ## The hourly call
 
-GitHub's scheduler did not keep time during the testnet soak (2 of about 19 hourly runs started on the first day), so it should not be the clock for mainnet. Two options; both keep the GitHub workflow as a manual trigger and backstop:
+An Upstash QStash schedule calls `POST https://api.tanilo.io/internal/anchor/run` once an hour with the header `Authorization: Bearer <CRON_SECRET>`. QStash forwards a header to the destination when it is sent to QStash as `Upstash-Forward-Authorization`. This puts a second copy of the secret in Upstash, where the API's storage already lives.
 
-1. **Vercel Cron.** The run route also answers GET, and Vercel sends `Authorization: Bearer $CRON_SECRET` on cron calls by itself when `CRON_SECRET` is set. It needs one entry in the API's `vercel.json` (`"crons": [{ "path": "/internal/anchor/run", "schedule": "7 * * * *" }]`). An hourly schedule needs a Vercel Pro plan; on Hobby a deployment with an hourly cron is rejected. Not added yet for that reason.
-2. **A scheduled HTTP call from another service** (for example an Upstash QStash schedule): `POST https://api.tanilo.io/internal/anchor/run` every hour with the header `Authorization: Bearer <CRON_SECRET>`. That puts a second copy of the secret in that service.
+GitHub's scheduler was tried first and did not keep time (2 of about 19 hourly runs started on the first day), so the GitHub workflow is now a manual trigger only.
+
+The run route also answers GET with the same bearer, for schedulers that can only make GET requests (Vercel Cron is one; its hourly schedules need a Pro plan).
 
 ## Announcing
 

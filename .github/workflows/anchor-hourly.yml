@@ -1,20 +1,17 @@
-# Once an hour, ask the Tanilo API to anchor the receipt hashes queued since the last run.
+# Ask the Tanilo API to anchor the receipt hashes queued since the last run.
 # The API does the work (builds the tree, sends the transaction); this workflow only makes the call.
+#
+# Manual trigger only ("Run workflow"). The hourly call is made by a scheduler that keeps time
+# (an Upstash QStash schedule); see docs/mainnet-launch.md. GitHub's own scheduler was tried first and
+# started 2 of about 19 hourly runs on its first day (2026-10-05), so the schedule was removed.
 #
 # Off until the repository variable ANCHOR_ENABLED is set to 1.
 #   Secret   CRON_SECRET      the same value the API holds; sent as "Authorization: Bearer ..."
 #   Variable ANCHOR_ENABLED   1 to run
 #   Variable ANCHOR_RUN_URL   optional; default https://api.tanilo.io/internal/anchor/run
-#
-# GitHub's scheduler is best effort. In this repository's first day it started 2 of about 19 hourly runs
-# (2026-10-05). It also switches scheduled workflows off in a public repository that has had no activity for
-# 60 days. So this workflow is a backstop and a manual trigger ("Run workflow"), not a dependable hourly clock.
-# A scheduler that keeps time (see docs/mainnet-launch.md) should make the hourly call.
-name: Anchor batch (hourly)
+name: Anchor batch (manual)
 
 on:
-  schedule:
-    - cron: "7 * * * *"
   workflow_dispatch: {}
 
 permissions:

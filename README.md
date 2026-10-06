@@ -131,7 +131,7 @@ scripts/                        guarded deploy, anchor a folder of receipts, ver
 python/tanilo_anchor_verify.py  the Python checker (standard library only)
 vectors/merkle-proofs.json      78 valid and 15 invalid inclusion vectors (CC0-1.0)
 ots/                            not in use: an OpenTimestamps step that needs public batch files
-.github/workflows/              a backstop call that asks the API to anchor what is queued
+.github/workflows/              a manual trigger that asks the API to anchor what is queued
 examples/receipts/              three published receipts used by the examples
 examples/historical/            the first testnet3 batch and its proofs, kept as written
 docs/                           design notes; how to fund a mainnet wallet; the mainnet launch runbook

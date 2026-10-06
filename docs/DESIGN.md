@@ -10,7 +10,7 @@
 | Leaf order | Queue order, each hash once | Order carries no meaning. |
 | Batch id | `batch-` plus the first 32 hex digits of the root | A batch rebuilt after a failure gets the same id. |
 | Publication | A contract call, not raw calldata | One `eth_call` answers "is this root anchored, and when". The contract accepts roots from one address only and never overwrites a root's first time. |
-| Trigger | A scheduled call once an hour | One transaction an hour, whatever the volume. |
+| Trigger | A scheduled call once an hour | At most one transaction an hour per 1,000 receipts, and none in an hour with no receipts. |
 
 ## Gas
 
@@ -40,7 +40,7 @@ On GOAT testnet3 on 2026-10-05: deploying the contract used 290,923 gas, the one
 - **Tree size.** The audit path, not the stated `tree_size`, is what the root commits to. A wrong `tree_size` that changes the path's shape fails; one that keeps the same shape recomputes the same root.
 - **Finality.** GOAT documents fast sequencer confirmation and later publication to Bitcoin. A block time is the chain's statement of when the block was made.
 - **Testnets reset.** A proof that points at a reset chain can no longer be confirmed.
-- **Scheduler.** GitHub's scheduled workflows are best effort: in this repository's first day, 2 of about 19 hourly runs started. They are also switched off in a public repository after 60 days without activity. The hourly call should come from a scheduler that keeps time; the workflow is a backstop.
+- **Scheduler.** GitHub's scheduled workflows are best effort: in this repository's first day, 2 of about 19 hourly runs started. They are also switched off in a public repository after 60 days without activity. The hourly call comes from a scheduler that keeps time (an Upstash QStash schedule); the workflow is a manual trigger.
 - **Proof custody.** Roots alone are not enough to rebuild proofs; the batch files are. A batch file is given to anyone who holds a receipt in that batch, so a holder can keep it. Batch files are not published to everyone, because that would show how many receipts each batch holds.
 - **Batch size and proof holders.** A proof carries `tree_size`, so a receipt's holder learns the size of that receipt's batch. Hiding that as well would need padding every batch to a fixed size with random leaves. Not done.
 
