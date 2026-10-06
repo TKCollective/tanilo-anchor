@@ -48,8 +48,9 @@ const queuedFor = op && op.oldest_queued_at ? Date.now() - Date.parse(op.oldest_
 if (!s.queueing_new_receipts) problems.push('queueing is switched off (ANCHOR_QUEUE is not 1)');
 if (!s.contract) problems.push('no contract address is configured');
 if (lastRun && lastRun.status !== 'ok') problems.push(`the last run ${ago(lastRun.at)} ended "${lastRun.status}"`);
-if (runAge > 2.5 * HOUR) problems.push(lastRun ? `no run for ${ago(lastRun.at).replace(' ago', '')} (expected about hourly)` : 'no run has been recorded yet');
-if (queuedFor > 2.5 * HOUR) problems.push(`the oldest queued hash has waited since ${op.oldest_queued_at}`);
+// Runs are scheduled once a day; a job may start at any point within its hour. Allow 26 hours.
+if (runAge > 26 * HOUR) problems.push(lastRun ? `no run for ${ago(lastRun.at).replace(' ago', '')} (expected about once a day)` : 'no run has been recorded yet');
+if (queuedFor > 26 * HOUR) problems.push(`the oldest queued hash has waited since ${op.oldest_queued_at}`);
 
 console.log(`Anchoring health   ${API}   checked ${s.checked_at}`);
 console.log(`  network / contract   ${s.chain}   ${s.contract}`);

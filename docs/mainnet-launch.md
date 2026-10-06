@@ -18,7 +18,7 @@ Network facts, checked against GOAT's documentation (docs.goat.network, "Network
 
 - [ ] The mainnet wallet exists, its key is in the password manager as "GOAT MAINNET anchor key", and it is funded (see `mainnet-funding.md`).
 - [ ] The API change that keeps batch sizes private and stores each network's batches separately is merged and deployed (API branch `anchor-mainnet-prep`).
-- [ ] The hourly QStash schedule exists (see "The hourly call" below).
+- [ ] A scheduler that keeps time is in place (see "The scheduled call" below).
 
 ## 1. Deploy the contract (one real transaction, about 0.00000004 BTC)
 
@@ -81,13 +81,11 @@ node ~/tanilo-work/tanilo-anchor/scripts/health.mjs
 
 It should show `eip155:2345` and the mainnet contract. After the next run: one batch, and a proof for a fresh receipt that the Python checker confirms against `https://rpc.goat.network` with the mainnet contract as the trusted one.
 
-## The hourly call
+## The scheduled call
 
-An Upstash QStash schedule calls `POST https://api.tanilo.io/internal/anchor/run` once an hour with the header `Authorization: Bearer <CRON_SECRET>`. QStash forwards a header to the destination when it is sent to QStash as `Upstash-Forward-Authorization`. This puts a second copy of the secret in Upstash, where the API's storage already lives.
+Since 2026-10-06 the batch run is scheduled once a day by a Vercel Cron entry in the API's `vercel.json` (`"path": "/internal/anchor/run", "schedule": "7 0 * * *"`). Vercel calls the route with GET and sends `Authorization: Bearer $CRON_SECRET` by itself; the route answers GET and POST with that bearer. Once a day is the limit of the API's Vercel plan, and on that plan a job may start at any point within its scheduled hour. No anchoring interval is guaranteed.
 
-GitHub's scheduler was tried first and did not keep time (2 of about 19 hourly runs started on the first day), so the GitHub workflow is now a manual trigger only.
-
-The run route also answers GET with the same bearer, for schedulers that can only make GET requests (Vercel Cron is one; its hourly schedules need a Pro plan).
+What was tried first: GitHub's scheduler did not keep time (2 of about 19 hourly runs started on the first day), and an hourly Upstash QStash schedule was configured on 2026-10-06 but no call from it was ever recorded by the API. The GitHub workflow remains as a manual trigger ("Run workflow").
 
 ## Announcing
 

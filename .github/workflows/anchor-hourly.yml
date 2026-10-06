@@ -1,8 +1,8 @@
 # Ask the Tanilo API to anchor the receipt hashes queued since the last run.
 # The API does the work (builds the tree, sends the transaction); this workflow only makes the call.
 #
-# Manual trigger only ("Run workflow"). The hourly call is made by a scheduler that keeps time
-# (an Upstash QStash schedule); see docs/mainnet-launch.md. GitHub's own scheduler was tried first and
+# Manual trigger only ("Run workflow"). The scheduled call is made once a day by a Vercel Cron entry in
+# the API's configuration; see docs/mainnet-launch.md. GitHub's own scheduler was tried first and
 # started 2 of about 19 hourly runs on its first day (2026-10-05), so the schedule was removed.
 #
 # Off until the repository variable ANCHOR_ENABLED is set to 1.
