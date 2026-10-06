@@ -1,6 +1,8 @@
 # Mainnet launch runbook
 
-Nothing here has been done. Each step that sends a transaction or changes production is a separate decision. Written for someone who is not a developer.
+**Done on 2026-10-06.** Kept as the record of how the launch was carried out, and as the procedure for doing it again. The contract is `0xddCC4eb18b39a520b874046b91b748B5E8cE7C54` (deploy transaction `0xb05be04587d5b55778163f0c100504f8c3c0d945528099c2b4564dcfe7c1afb7`); the first anchor was transaction `0xd39fe1aa466da40d375164d72241b45c559f797c7094fc7f2713eb4a7449976e`; production switched to mainnet the same day and its first batch was transaction `0x8d5d2db89fe694d1b04c98f72bdf961876008b79bb1c6864047025984233ffce`.
+
+The text below is as written before the launch. Each step that sends a transaction or changes production is a separate decision. Written for someone who is not a developer.
 
 Network facts, checked against GOAT's documentation (docs.goat.network, "Networks & RPC" and the quick start) on 2026-10-06:
 

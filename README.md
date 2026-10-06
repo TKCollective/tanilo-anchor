@@ -4,7 +4,7 @@ Proof of when for Tanilo receipts.
 
 A Tanilo receipt is signed, and the signature shows which key signed it. A signature does not show *when*: the time inside a receipt is the issuer's own statement. Anchoring adds one thing. The hashes of a batch of receipts are combined into a Merkle tree, and the tree's 32-byte root is published in a transaction on GOAT Network. Each receipt then has a short inclusion proof. Anyone holding the receipt and its proof can show that the receipt's canonical bytes existed no later than the time of that block.
 
-**Status: testnet trial.** The contract is deployed on GOAT **testnet3** only. Nothing is anchored on mainnet. Anchoring of Tanilo receipts is in a testnet trial and is not a supported feature yet. Testnets can be reset, so a testnet proof is a demonstration, not a lasting record.
+**Status: live on GOAT mainnet since 2026-10-06.** New Tanilo receipts from `/evaluate` and `/v1/verify-facts` are anchored through the contract below. GOAT's own documentation calls this network "Alpha Mainnet". The service is in free beta.
 
 ## What an anchor shows, and what it does not
 
@@ -38,11 +38,11 @@ How many receipts a batch holds is not published: see [What is public](#what-is-
   "batch_id": "batch-<first 32 hex of the root>",
   "batched_at": "<when the batch was built, by the issuer's clock; not evidence>",
   "anchors": [
-    { "kind": "evm-contract", "chain": "eip155:48816", "chain_id": 48816,
-      "contract": "0x821b832D25d8E18BD3A761B935bfaf1c2F761D58",
+    { "kind": "evm-contract", "chain": "eip155:2345", "chain_id": 2345,
+      "contract": "0xddCC4eb18b39a520b874046b91b748B5E8cE7C54",
       "publisher": "0x…", "tx_hash": "0x…", "block_number": 0, "block_hash": "0x…",
       "block_time": "<the evidential time>", "gas_used": "…", "effective_gas_price_wei": "…",
-      "fee_native": "…", "explorer_tx": "https://explorer.testnet3.goat.network/tx/0x…" }
+      "fee_native": "…", "explorer_tx": "https://explorer.goat.network/tx/0x…" }
   ]
 }
 ```
@@ -59,7 +59,7 @@ How many receipts a batch holds is not published: see [What is public](#what-is-
 
 One thing cannot be hidden from a receipt's own holder: a proof carries `tree_size`, because an RFC 6962 path cannot be checked without it. So the holder of a receipt learns the size of that receipt's batch. The pattern of hours in which a batch exists at all is also visible to everyone.
 
-Batches anchored on testnet before 2026-10-06 predate this: their sizes were public, and their on-chain events carry the real count.
+Batches anchored on testnet before 2026-10-06 predate this: their sizes were public, and their on-chain events carry the real count. The mainnet example in `examples/mainnet-2026-10-06/` shows the size of its own batch (five), because a proof does.
 
 ## Checking a proof
 
@@ -74,7 +74,7 @@ node scripts/verify-proof.mjs receipt.json receipt.anchor.json --offline
 **On-chain: was this root published, and when?** Ask the contract you trust.
 
 ```
-TANILO_ANCHOR_CONTRACT=0x821b832D25d8E18BD3A761B935bfaf1c2F761D58 \
+TANILO_ANCHOR_CONTRACT=0xddCC4eb18b39a520b874046b91b748B5E8cE7C54 \
   node scripts/verify-proof.mjs receipt.json receipt.anchor.json
 ```
 
@@ -85,9 +85,9 @@ In Python, with the standard library only (`python/tanilo_anchor_verify.py`; the
 ```python
 from tanilo_anchor_verify import verify_anchor, evm_contract_lookup
 
-lookup = evm_contract_lookup("https://rpc.testnet3.goat.network",
-                             trusted_contracts=["0x821b832D25d8E18BD3A761B935bfaf1c2F761D58"],
-                             chain_id=48816)
+lookup = evm_contract_lookup("https://rpc.goat.network",
+                             trusted_contracts=["0xddCC4eb18b39a520b874046b91b748B5E8cE7C54"],
+                             chain_id=2345)
 a = verify_anchor(canonical_sha256, proof, {"evm-contract": lookup})
 print(a.status, a.anchored_at)
 ```
@@ -108,15 +108,17 @@ Anchor status sits beside signature validity and is never folded into it. An anc
 
 | Network | Chain | Address | Status |
 |---|---|---|---|
-| GOAT testnet3 | `eip155:48816` | `0x821b832D25d8E18BD3A761B935bfaf1c2F761D58` | current; publisher `0x01Ef4C7dc17af4b8BF7758aC90B6Ae0036a8ffd8` |
-| GOAT testnet3 | `eip155:48816` | `0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b` | retired; one batch, kept as a historical example |
-| GOAT mainnet | `eip155:2345` | not deployed | |
+| GOAT Network (mainnet) | `eip155:2345` | `0xddCC4eb18b39a520b874046b91b748B5E8cE7C54` | **current**, since 2026-10-06; publisher `0x1C17bde3592DEa74Ef18c74061BF0E77E300aF96` |
+| GOAT testnet3 | `eip155:48816` | `0x821b832D25d8E18BD3A761B935bfaf1c2F761D58` | historical: used for the pre-launch trial on 2026-10-05 |
+| GOAT testnet3 | `eip155:48816` | `0x801fB569593ae8fd9E906059cA6d9e584F4Bc30b` | historical: retired on 2026-10-05; one batch, kept as an example |
 
-The code at both testnet3 addresses is byte-identical to `deployedBytecode` in `build/TaniloAnchor.json`, and that build is reproducible from the source with solc 0.8.37. You can compare them yourself with `eth_getCode`.
+The mainnet contract was deployed in transaction [`0xb05be04587d5b55778163f0c100504f8c3c0d945528099c2b4564dcfe7c1afb7`](https://explorer.goat.network/tx/0xb05be04587d5b55778163f0c100504f8c3c0d945528099c2b4564dcfe7c1afb7) (block 15873757, 2026-10-06T00:22:23Z). That transaction's input is exactly `bytecode` from `build/TaniloAnchor.json` followed by the publisher address.
 
-About the first contract: Retired on 2026-10-05; no new roots will be anchored through it. Its anchored batch remains verifiable. The batch and its three proofs are in `examples/historical/testnet3-2026-10-05/`, unchanged, with a note on how they differ from what the code writes today. To check a proof from that batch on-chain, name the retired contract as the one you trust.
+The code at all three addresses is byte-identical to `deployedBytecode` in `build/TaniloAnchor.json`, and that build is reproducible from the source with solc 0.8.37. You can compare them yourself with `eth_getCode`.
 
-Mainnet is disabled in `config/chains.json`, and the code refuses chain 2345 unless `ALLOW_MAINNET=1` is set.
+The testnet contracts are history, not part of the service. Testnet batches are no longer listed or served by the API, and testnets can be reset. About the first testnet contract: Retired on 2026-10-05; no new roots will be anchored through it. Its anchored batch remains verifiable. The batch and its three proofs are in `examples/historical/testnet3-2026-10-05/`, unchanged, with a note on how they differ from what the code writes today. To check a proof from that batch on-chain, name that contract as the one you trust.
+
+Publishing is guarded. `scripts/deploy.mjs` and `scripts/anchor-batch.mjs` default to testnet3 and refuse mainnet (`config/chains.json` lists it with `enabled: false`, and the code refuses chain 2345 unless `ALLOW_MAINNET=1`). `scripts/deploy-guarded.mjs` deploys to mainnet only after a typed confirmation. Checking a proof is read-only and works on any listed network.
 
 ## What is in this repository
 
@@ -133,6 +135,7 @@ vectors/merkle-proofs.json      78 valid and 15 invalid inclusion vectors (CC0-1
 ots/                            not in use: an OpenTimestamps step that needs public batch files
 .github/workflows/              a manual trigger that asks the API to anchor what is queued
 examples/receipts/              three published receipts used by the examples
+examples/mainnet-2026-10-06/    a receipt anchored on mainnet, with its proof and the commands to check it
 examples/historical/            the first testnet3 batch and its proofs, kept as written
 docs/                           design notes; how to fund a mainnet wallet; the mainnet launch runbook
 ```
@@ -143,7 +146,7 @@ The service side (the queue that collects receipt hashes after signing, the batc
 
 ```
 npm ci
-npm test                         # 19 tests; the end-to-end ones start their own local chain
+npm test                         # 20 tests; the end-to-end ones start their own local chain
 python3 python/test_vectors.py   # the Python checker against the Node-made vectors
 python3 ots/test_stamp_batches.py
 ```
