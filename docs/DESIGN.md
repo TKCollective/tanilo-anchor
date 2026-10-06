@@ -10,7 +10,7 @@
 | Leaf order | Queue order, each hash once | Order carries no meaning. |
 | Batch id | `batch-` plus the first 32 hex digits of the root | A batch rebuilt after a failure gets the same id. |
 | Publication | A contract call, not raw calldata | One `eth_call` answers "is this root anchored, and when". The contract accepts roots from one address only and never overwrites a root's first time. |
-| Trigger | A scheduled call once an hour | At most one transaction an hour per 1,000 receipts, and none in an hour with no receipts. |
+| Trigger | A recurring scheduled call | A run with nothing queued sends no transaction; a run sends one transaction per batch of up to 1,000 hashes. |
 
 ## Gas
 
@@ -29,20 +29,21 @@ On GOAT testnet3 on 2026-10-05: deploying the contract used 290,923 gas, the one
 1. After a receipt is signed, its `canonical_sha256` and the time go on a queue. Nothing else about the receipt is queued. A cached reply that replays an earlier receipt queues nothing.
 2. A scheduled call drains the queue: up to 1,000 hashes per batch, leaving out any hash that already has a proof.
 3. The root is anchored with one transaction (the leaf count sent to the contract is 0), and the batch document and a pointer per hash are stored, under a prefix for that network.
-4. Only then is the queue trimmed. A failure before that leaves the hashes queued for the next run. If the root reached the chain but storing failed, the next run finds the root already anchored and rebuilds the same record from the chain instead of sending again.
-5. A proof is computed on request from the batch document and checked before it is returned.
+4. Before the transaction is sent, the exact batch (its ordered hashes, its root, and a fingerprint of the queue entries it was built from) is saved as the pending batch. Only after the batch is stored is the queue trimmed, in the same storage transaction that clears the pending record. A failure before the transaction leaves the hashes queued for the next run.
+5. A run that stopped after its transaction and before the batch was stored is finished by the next run, with exactly the saved hashes, whatever has been queued since: that run asks the contract whether the saved root is already anchored, finds that it is, rebuilds the record from the chain and sends no second transaction. Hashes queued in the meantime go into the next batch. This case, with new hashes arriving in between, is covered by a test in the service's own suite (the service is not open source, so that test is not in this repository); the same test shows the earlier version of the code sending a second transaction for a merged batch, which is the defect this fixed.
+6. A proof is computed on request from the batch document and checked before it is returned.
 
 ## Limits worth knowing
 
-- **Upper bound only.** An anchor shows existence no later than the block time. It says nothing about how much earlier the receipt existed.
-- **One hour of delay.** A receipt has no proof until the next batch. The lookup cannot tell "not anchored yet" from "never queued".
+- **Upper bound only.** An anchor shows the canonical payload existed by the block's timestamp. It says nothing about how much earlier it existed, or about when the signature was made.
+- **Delay, and no promised interval.** A queued hash has no proof until a later batch is anchored and stored. The lookup cannot tell "not anchored yet" from "never queued".
 - **Best-effort queueing.** If the queue cannot be reached when a receipt is signed, the receipt is still returned and that receipt gets no anchor unless it is queued again.
 - **Tree size.** The audit path, not the stated `tree_size`, is what the root commits to. A wrong `tree_size` that changes the path's shape fails; one that keeps the same shape recomputes the same root.
-- **Finality.** GOAT documents fast sequencer confirmation and later publication to Bitcoin. A block time is the chain's statement of when the block was made.
+- **Finality.** GOAT documents fast sequencer confirmation and later publication to Bitcoin. A block timestamp is the chain's statement of when the block was made. The checkers read the contract's current state through an RPC endpoint; they do not establish finality, and a reorganization can change or remove a confirmation.
 - **Testnets reset.** A proof that points at a reset chain can no longer be confirmed.
 - **Scheduler.** GitHub's scheduled workflows are best effort: in this repository's first day, 2 of about 19 hourly runs started. They are also switched off in a public repository after 60 days without activity. The hourly call comes from a scheduler that keeps time (an Upstash QStash schedule); the workflow is a manual trigger.
-- **Proof custody.** Roots alone are not enough to rebuild proofs; the batch files are. A batch file is given to anyone who holds a receipt in that batch, so a holder can keep it. Batch files are not published to everyone, because that would show how many receipts each batch holds.
-- **Batch size and proof holders.** A proof carries `tree_size`, so a receipt's holder learns the size of that receipt's batch. Hiding that as well would need padding every batch to a fixed size with random leaves. Not done.
+- **Proof custody.** Roots alone are not enough to rebuild proofs; the batch files are. A batch file is given to anyone who names a hash that is in that batch, so a holder can keep it.
+- **Batch sizes are not confidential.** Batch counts are omitted from the public index and the on-chain count field is set to zero (that 0 is itself public). But a proof carries `tree_size`, and anyone with a hash from a batch can retrieve its ordered hash list, so anyone with one hash can learn that batch's size. Keeping sizes confidential would need padding every batch to a fixed size with random leaves and not serving hash lists. Not done.
 
 ## Open question
 

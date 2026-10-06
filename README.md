@@ -1,30 +1,32 @@
 # tanilo-anchor
 
-Proof of when for Tanilo receipts.
+Proof that a Tanilo receipt existed by a given time.
 
-A Tanilo receipt is signed, and the signature shows which key signed it. A signature does not show *when*: the time inside a receipt is the issuer's own statement. Anchoring adds one thing. The hashes of a batch of receipts are combined into a Merkle tree, and the tree's 32-byte root is published in a transaction on GOAT Network. Each receipt then has a short inclusion proof. Anyone holding the receipt and its proof can show that the receipt's canonical bytes existed no later than the time of that block.
+A Tanilo receipt is signed, and the signature shows which key signed it. A signature does not show *when*: the time inside a receipt is the issuer's own statement. Anchoring adds one thing. The hashes of a batch of receipts are combined into a Merkle tree, and the tree's 32-byte root is published in a transaction on GOAT Network. A receipt whose hash is in a batch has a short inclusion proof. Anyone holding the receipt and its proof can show that the receipt's canonical payload existed by the timestamp of that block.
 
-**Status: live on GOAT mainnet since 2026-10-06.** New Tanilo receipts from `/evaluate` and `/v1/verify-facts` are anchored through the contract below. GOAT's own documentation calls this network "Alpha Mainnet". The service is in free beta.
+**Status: live on GOAT mainnet since 2026-10-06.** Receipt hashes from `/evaluate` and `/v1/verify-facts` that are successfully queued are eligible for batching; a proof is available once anchoring and proof storage succeed. Queueing failures, backlogs and service interruptions can leave receipts without proofs. GOAT's own documentation calls this network "Alpha Mainnet". The service is in free beta.
 
 ## What an anchor shows, and what it does not
 
 | It shows | It does not show |
 |---|---|
-| The receipt's canonical bytes existed no later than the anchoring block's time. | Who issued the receipt. The signature shows which key signed it. |
-| The receipt was in the batch whose root is on-chain: the path from its hash to the root can be recomputed offline. | That the claim in the receipt is true. |
-| | That the receipt is not older than it says. An anchor bounds the time from above only. |
+| The receipt's canonical payload existed by the anchoring block's timestamp, under the hash and chain assumptions: that SHA-256 behaves as designed, and that the chain's record of that block and its timestamp is what it appears to be. | When the signature was created or the receipt issued. The payload may be older than the block, and a signature over it can be made at any time. |
+| The receipt's hash is in the batch whose root is on-chain: the path from the hash to the root can be recomputed offline. | Which key signed the receipt. The signature shows that, and associating that key with an issuer requires a key you have authenticated as the issuer's. |
+| | That the claim in the receipt is true. |
+
+An anchor check does not check the receipt's signature, and it does not check that a hash you hand it is the hash of the receipt you hold. Verify the receipt first and use the hash the verifier recomputes; see [Checking a proof](#checking-a-proof).
 
 Only hashes are involved. A leaf is a receipt's `canonical_sha256`; the chain sees one 32-byte root per batch. No receipt content goes into a batch, a proof or a transaction.
 
-How many receipts a batch holds is not published: see [What is public](#what-is-public).
+Batch sizes are not broadcast and are not confidential: see [What is public](#what-is-public).
 
 ## How it works
 
 1. **Leaf.** A receipt's `canonical_sha256`: the SHA-256 of the RFC 8785 canonical bytes of its signed payload. It is the same value `tanilo-receipt-verify` recomputes.
 2. **Tree.** RFC 6962 (Certificate Transparency) Merkle tree over SHA-256. A leaf hash is `SHA256(0x00 || digest)` and a node hash is `SHA256(0x01 || left || right)`. Leaves are in queue order; a hash appears once.
 3. **Root on-chain.** `TaniloAnchor.anchor(root, leafCount, batchId)`. The contract stores the block time at which a root was first anchored, accepts roots only from one publisher address, and refuses a root that is already anchored, so a root's first time cannot be overwritten.
-4. **Proof.** One `tanilo.anchor.v1` record per receipt: the leaf, its index, the tree size, the audit path, the root, and where the root was published.
-5. **Batch file.** Each batch's ordered list of hashes is kept, and is given to anyone who holds a receipt in that batch, so that holder can rebuild the batch's proofs without depending on Tanilo keeping them.
+4. **Proof.** One `tanilo.anchor.v1` record per anchored hash: the leaf, its index, the tree size, the audit path, the root, and where the root was published.
+5. **Batch file.** Each batch's ordered list of hashes is kept, and is given to anyone who names a hash that is in that batch, so that a holder can rebuild the batch's proofs without depending on Tanilo keeping them.
 
 ```json
 {
@@ -51,54 +53,73 @@ How many receipts a batch holds is not published: see [What is public](#what-is-
 
 ## What is public
 
-| Public | Not public |
+Batch counts are omitted from the public index and the on-chain count field is set to zero. Anyone with a hash from a batch can retrieve its size and ordered hash list, so batch sizes are not confidential.
+
+| | |
 |---|---|
-| For each batch: its id, root, transaction and block time (`GET /v1/anchor/batches`). | How many receipts a batch holds. The index and the status route carry no counts. |
-| A receipt's proof, to anyone who has its `canonical_sha256` (`GET /v1/anchor/proof/{canonical_sha256}`). | The number passed to the contract as `leafCount`: the service sends 0, so the public event does not carry the batch size. |
-| | A batch's list of hashes, except to someone who names a hash that is in it (`GET /v1/anchor/batches/{batch_id}?leaf={canonical_sha256}`). |
+| Batch index (`GET /v1/anchor/batches`) and status | Batch id, root, transaction and block time. The count is omitted. |
+| On-chain | The root and a batch id. The actual count is omitted: the service submits `leafCount` as 0, and that 0 is itself public. |
+| A proof (`GET /v1/anchor/proof/{canonical_sha256}`) | Given to anyone who has the hash. It carries `tree_size`, because an RFC 6962 path cannot be checked without it. |
+| A batch's ordered hash list (`GET /v1/anchor/batches/{batch_id}?leaf={canonical_sha256}`) | Given to anyone who names a hash that is in the batch. |
 
-One thing cannot be hidden from a receipt's own holder: a proof carries `tree_size`, because an RFC 6962 path cannot be checked without it. So the holder of a receipt learns the size of that receipt's batch. The pattern of hours in which a batch exists at all is also visible to everyone.
+The times at which batches exist are visible to everyone.
 
-Batches anchored on testnet before 2026-10-06 predate this: their sizes were public, and their on-chain events carry the real count. The mainnet example in `examples/mainnet-2026-10-06/` shows the size of its own batch (five), because a proof does.
+Batches anchored on testnet before 2026-10-06 predate this: their sizes were in the public index, and their on-chain events carry the real count. The mainnet example in `examples/mainnet-2026-10-06/` shows the size of its own batch (five), because a proof does.
 
 ## Checking a proof
 
-Two steps, and they answer different questions.
+Three steps, and they answer different questions.
 
-**Offline: is this receipt under this root?** No network needed.
+**1. Verify the receipt, and take the hash from the verifier.** An anchor check does not look at the receipt's signature, and it cannot tell whether a hash belongs to the receipt you hold. So verify the receipt with `tanilo-receipt-verify` first, against a key set you have authenticated as the issuer's, and pass on the `canonical_sha256` it recomputes from the signed payload. Never take the hash from the proof's own `leaf`: a proof always agrees with itself.
 
-```
-node scripts/verify-proof.mjs receipt.json receipt.anchor.json --offline
-```
+**2. Offline: is this hash under this root?** No network needed.
 
-**On-chain: was this root published, and when?** Ask the contract you trust.
+**3. On-chain: does the contract you trust hold this root, and since when?**
 
-```
-TANILO_ANCHOR_CONTRACT=0xddCC4eb18b39a520b874046b91b748B5E8cE7C54 \
-  node scripts/verify-proof.mjs receipt.json receipt.anchor.json
-```
-
-The checker asks only the contract address **you** give it, never one the proof names by itself. The anchoring time is read from a contract, and an unknown contract could report any time it likes. A proof that names a different contract is reported as `indeterminate`.
-
-In Python, with the standard library only (`python/tanilo_anchor_verify.py`; the same module is prepared for `tanilo-receipt-verify` 0.2.0, which is not released yet):
+In Python (`python/tanilo_anchor_verify.py` needs only the standard library; step 1 needs `pip install tanilo-receipt-verify`):
 
 ```python
+import json
+from tanilo_receipt_verify import verify
 from tanilo_anchor_verify import verify_anchor, evm_contract_lookup
+
+receipt = json.load(open("receipt.json"))
+jwks = json.load(open("jwks.json"))                 # a key set you have authenticated as the issuer's
+r = verify(receipt, jwks_by_issuer={"https://tanilo.io/.well-known/jwks.json": jwks})
+assert r.status == "valid", r.status                # 1. the signature, and the hash recomputed from the payload
+
+proof = json.load(open("proof.anchor.json"))
+print(verify_anchor(r.canonical_sha256, proof).merkle_ok)          # 2. offline
 
 lookup = evm_contract_lookup("https://rpc.goat.network",
                              trusted_contracts=["0xddCC4eb18b39a520b874046b91b748B5E8cE7C54"],
                              chain_id=2345)
-a = verify_anchor(canonical_sha256, proof, {"evm-contract": lookup})
+a = verify_anchor(r.canonical_sha256, proof, {"evm-contract": lookup})   # 3. against the chain
 print(a.status, a.anchored_at)
+```
+
+`verify_anchor` is not in the published `tanilo-receipt-verify` yet (0.1.2 checks signatures only); it is planned for 0.2.0. Until then it is the one file in `python/`.
+
+With Node, from this repository. The script recomputes the hash from the receipt file's signed payload; it does not check the signature:
+
+```
+node scripts/verify-proof.mjs receipt.json receipt.anchor.json --offline
+
+TANILO_ANCHOR_CONTRACT=0xddCC4eb18b39a520b874046b91b748B5E8cE7C54 \
+  node scripts/verify-proof.mjs receipt.json receipt.anchor.json
 ```
 
 Three outcomes, never an exception:
 
 | Outcome | Meaning |
 |---|---|
-| `anchored` | The path verifies and the trusted contract holds the root. `anchored_at` is the block time. |
+| `anchored` | The path verifies and the trusted contract holds the root. `anchored_at` is the block timestamp the contract recorded. |
 | `not_anchored` | The path does not verify, or the trusted contract was asked and does not hold the root. |
 | `indeterminate` | The path verifies but publication was not confirmed: no lookup supplied, the RPC unreachable or on another chain, or a contract you did not list. |
+
+**You name the contract.** The checker asks only the contract address you give it, never one the proof names by itself. The anchoring time is read from a contract, and an unknown contract could report any time it likes. A proof that names a different contract is reported as `indeterminate`.
+
+**What the on-chain check relies on.** It asks the RPC endpoint you configured for the trusted contract's current `anchoredAt(root)` and reports that value, so it trusts that endpoint's answer. It does not independently verify the transaction metadata a proof carries (transaction hash, block number and hash, publisher, gas and fee figures), and it does not establish finality: a chain reorganization can change or remove a confirmation. The Node script also reports whether the transaction named in the proof carries the root in its log, as read from the same endpoint; that is the same trust, not an independent check.
 
 Anchor status sits beside signature validity and is never folded into it. An anchored receipt with a bad signature is still invalid. A valid receipt with no anchor is still valid; it just has no time bound.
 
