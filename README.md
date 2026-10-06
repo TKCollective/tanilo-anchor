@@ -1,6 +1,6 @@
 # tanilo-anchor
 
-Proof that a Tanilo receipt existed by a given time.
+Proof that a Tanilo receipt's canonical payload existed by a given time.
 
 A Tanilo receipt is signed, and the signature shows which key signed it. A signature does not show *when*: the time inside a receipt is the issuer's own statement. Anchoring adds one thing. The hashes of a batch of receipts are combined into a Merkle tree, and the tree's 32-byte root is published in a transaction on GOAT Network. A receipt whose hash is in a batch has a short inclusion proof. Anyone holding the receipt and its proof can show that the receipt's canonical payload existed by the timestamp of that block.
 
